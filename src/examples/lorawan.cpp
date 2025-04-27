@@ -32,7 +32,9 @@
 const uint32_t uplinkIntervalSeconds = 5UL * 60UL;    // minutes x seconds
 
 // create the LoRaWAN node
-LoRaWANNode node(&radio, &Region, subBand);
+Module radioModule(PIN_NSS, PIN_DIO1, PIN_NRESET, PIN_BUSY);
+SX1262 radio(&radioModule);
+LoRaWANNode node(&radio, &US915, 2);
 
 // result code to text - these are error codes that can be raised when using LoRaWAN
 // however, RadioLib has many more - see https://jgromes.github.io/RadioLib/group__status__codes.html for a complete list
@@ -148,12 +150,23 @@ void setup()
     debug(state != RADIOLIB_ERR_NONE, F("Initialise radio failed"), state, true);
 
     // Setup the OTAA session information
-    state = node.beginOTAA(joinEUI, devEUI, nwkKey, appKey);
+    state = node.beginOTAA(THING_NETWORK_JOIN_EUI, THING_NETWORK_DEV_EUI, THING_NETWORK_NWK_KEY, THING_NETWORK_APP_KEY);
     debug(state != RADIOLIB_ERR_NONE, F("Initialise node failed"), state, true);
 
-    SerialUSB.println(F("Join ('login') the LoRaWAN Network"));
-    state = node.activateOTAA();
-    debug(state != RADIOLIB_LORAWAN_NEW_SESSION, F("Join failed"), state, true);
+    while (true)
+    {
+        SerialUSB.println(F("Join ('login') the LoRaWAN Network"));
+        state = node.activateOTAA();
+        debug(state != RADIOLIB_LORAWAN_NEW_SESSION, F("Join failed"), state, false);
+        if (state == RADIOLIB_LORAWAN_NEW_SESSION)
+        {
+            break;
+        }
+        else
+        {
+            delay(5000);
+        }
+    }
 
     SerialUSB.println(F("Ready!\n"));
 }
@@ -164,14 +177,16 @@ void loop()
 
     // This is the place to gather the sensor inputs
     // Instead of reading any real sensor, we just generate some random numbers as example
-    uint8_t value1 = radio.random(100);
-    uint16_t value2 = radio.random(2000);
+    // Formatted as CayenneLLP
+    uint8_t channel = 1;
+    uint8_t type = 0x0; // type "Digital Input"
+    uint8_t value = radio.randomByte();
 
     // Build payload byte array
     uint8_t uplinkPayload[3];
-    uplinkPayload[0] = value1;
-    uplinkPayload[1] = highByte(value2); // See notes for high/lowByte functions
-    uplinkPayload[2] = lowByte(value2);
+    uplinkPayload[0] = channel;
+    uplinkPayload[1] = type;
+    uplinkPayload[2] = value;
 
     // Perform an uplink
     int16_t state = node.sendReceive(uplinkPayload, sizeof(uplinkPayload));

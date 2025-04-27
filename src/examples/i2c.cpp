@@ -7,8 +7,8 @@
 // Modified from https://playground.arduino.cc/Main/I2cScanner/
 // --------------------------------------
 
-#include <Arduino.h>
 #include <Wire.h>
+#include <Arduino.h>
 
 // Set I2C bus to use: Wire, Wire1, etc.
 #define WIRE Wire
@@ -21,7 +21,6 @@ void setup() {
      delay(10);
   SerialUSB.println("\nI2C Scanner");
 }
-
 
 void loop() {
   byte error, address;
